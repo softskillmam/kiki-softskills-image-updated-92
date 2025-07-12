@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Footer from '@/components/Footer';
@@ -27,9 +28,7 @@ interface MBTIResult {
 const MBTITestPage = () => {
   const [hasAccess, setHasAccess] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [showQuiz, setShowQuiz] = useState(false);
   const [previousResult, setPreviousResult] = useState<any>(null);
-  const [isRetakingTest, setIsRetakingTest] = useState(false);
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -110,11 +109,6 @@ const MBTITestPage = () => {
       const userHasAccess = hasConfirmedOrder || hasEnrollment;
       console.log('Final access decision:', userHasAccess);
       setHasAccess(userHasAccess);
-      
-      // Auto-start quiz if they have access but no previous result
-      if (userHasAccess && !hasPreviousResult) {
-        setShowQuiz(true);
-      }
 
     } catch (error) {
       console.error('Error checking access:', error);
@@ -123,18 +117,13 @@ const MBTITestPage = () => {
     }
   };
 
-  const handleStartQuiz = () => {
-    setShowQuiz(true);
-    setIsRetakingTest(false);
-  };
-
   const handleQuizComplete = (result: MBTIResult) => {
-    const message = isRetakingTest 
+    const message = previousResult 
       ? `Your personality type has been updated to ${result.type}. Your personalized recommendations are displayed below.`
       : `Your personality type is ${result.type}. Check out your personalized recommendations below.`;
       
     toast({
-      title: isRetakingTest ? "Test Updated!" : "Test Completed!",
+      title: previousResult ? "Test Updated!" : "Test Completed!",
       description: message,
     });
     
@@ -147,20 +136,11 @@ const MBTITestPage = () => {
       judging_score: result.scores.J,
       completed_at: new Date().toISOString()
     });
-    
-    // Keep showing the quiz (with results) instead of hiding it
-    setIsRetakingTest(false);
   };
 
   const handlePurchaseTest = () => {
     // Navigate to career test page to purchase
     navigate('/career-test');
-  };
-
-  const handleRetakeTest = () => {
-    console.log('Starting retake test');
-    setIsRetakingTest(true);
-    setShowQuiz(true);
   };
 
   if (loading) {
@@ -243,119 +223,12 @@ const MBTITestPage = () => {
               </Button>
             </CardContent>
           </Card>
-        ) : showQuiz ? (
-          // Show the quiz with retake flag
-          <>
-            <MBTIQuiz onComplete={handleQuizComplete} isRetake={isRetakingTest} />
-            {/* Show retake button if they have previous results */}
-            {previousResult && !isRetakingTest && (
-              <div className="flex justify-center mt-8">
-                <Button 
-                  onClick={handleRetakeTest}
-                  variant="outline"
-                  className="bg-kiki-purple-50 hover:bg-kiki-purple-100 border-kiki-purple-300"
-                >
-                  Retake Test & Update Results
-                </Button>
-              </div>
-            )}
-          </>
-        ) : previousResult ? (
-          // Show previous result with option to retake
-          <div className="max-w-2xl mx-auto space-y-6">
-            <Card>
-              <CardHeader className="text-center">
-                <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
-                <CardTitle>Test Completed</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center space-y-4">
-                <div className="bg-gradient-to-r from-kiki-purple-50 to-kiki-blue-50 rounded-lg p-6">
-                  <div className="text-4xl font-bold bg-gradient-to-r from-kiki-purple-600 to-kiki-blue-600 bg-clip-text text-transparent mb-2">
-                    {previousResult.mbti_type}
-                  </div>
-                  <p className="text-gray-600">Your personality type</p>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Last completed on {new Date(previousResult.completed_at).toLocaleDateString()}
-                  </p>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <div className="font-medium text-gray-700">Extraversion</div>
-                    <div className="text-2xl font-bold text-kiki-purple-600">{previousResult.extraversion_score}/12</div>
-                  </div>
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <div className="font-medium text-gray-700">Sensing</div>
-                    <div className="text-2xl font-bold text-kiki-blue-600">{previousResult.sensing_score}/12</div>
-                  </div>
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <div className="font-medium text-gray-700">Thinking</div>
-                    <div className="text-2xl font-bold text-green-600">{previousResult.thinking_score}/12</div>
-                  </div>
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <div className="font-medium text-gray-700">Judging</div>
-                    <div className="text-2xl font-bold text-orange-600">{previousResult.judging_score}/12</div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <Button 
-                    onClick={() => setShowQuiz(true)}
-                    className="w-full bg-kiki-blue-600 hover:bg-kiki-blue-700"
-                  >
-                    View Full Results & Recommendations
-                  </Button>
-                  <Button 
-                    onClick={handleRetakeTest}
-                    variant="outline"
-                    className="w-full border-kiki-purple-300 text-kiki-purple-700 hover:bg-kiki-purple-50"
-                  >
-                    Retake Test & Update Results
-                  </Button>
-                  <p className="text-xs text-gray-500">
-                    Retaking the test will update your results and provide fresh recommendations
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         ) : (
-          // Has access but hasn't started
-          <Card className="max-w-md mx-auto">
-            <CardHeader className="text-center">
-              <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
-              <CardTitle>Ready to Start</CardTitle>
-            </CardHeader>
-            <CardContent className="text-center space-y-4">
-              <p className="text-gray-600">
-                You have access to the MBTI Personality Test. Ready to discover your personality type?
-              </p>
-              <div className="bg-kiki-purple-50 rounded-lg p-4 text-left space-y-2">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-500" />
-                  <span className="text-sm">48 comprehensive questions</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-500" />
-                  <span className="text-sm">Detailed personality analysis</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-500" />
-                  <span className="text-sm">Career recommendations</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-500" />
-                  <span className="text-sm">Course suggestions</span>
-                </div>
-              </div>
-              <Button 
-                onClick={handleStartQuiz}
-                className="w-full bg-kiki-purple-600 hover:bg-kiki-purple-700"
-              >
-                Start Test (15-20 minutes)
-              </Button>
-            </CardContent>
-          </Card>
+          // Has access - show quiz or results
+          <MBTIQuiz 
+            onComplete={handleQuizComplete} 
+            existingResult={previousResult}
+          />
         )}
       </main>
       <Footer />
