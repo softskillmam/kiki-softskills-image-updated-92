@@ -2,7 +2,8 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, Lightbulb, BookOpen, GraduationCap } from 'lucide-react';
+import { Users, GraduationCap } from 'lucide-react';
+import ExploreButton from '@/components/ExploreButton';
 
 interface Career {
   career_title: string;
@@ -122,7 +123,7 @@ const MBTIRecommendations: React.FC<MBTIRecommendationsProps> = ({
                   {course.description && (
                     <p className="text-sm text-gray-600 line-clamp-2 mb-3">{course.description}</p>
                   )}
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center justify-between text-sm mb-3">
                     <span className="text-gray-500">{course.duration}</span>
                     <div className="flex items-center gap-2">
                       {course.original_price && course.original_price > course.price && (
@@ -131,53 +132,16 @@ const MBTIRecommendations: React.FC<MBTIRecommendationsProps> = ({
                       <span className="font-semibold text-purple-600">₹{course.price}</span>
                     </div>
                   </div>
+                  <ExploreButton 
+                    courseId={course.id} 
+                    courseName={course.title}
+                  />
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
       )}
-
-      {/* Skill Development Recommendations */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-green-600" />
-            Skill Development Recommendations for {mbtiType}
-            <Badge variant="secondary" className="ml-2">{courses.length} found</Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {courses.length > 0 ? (
-            <div className="grid md:grid-cols-2 gap-4">
-              {courses.map((course, index) => (
-                <div key={index} className="border rounded-lg p-4 hover:shadow-lg transition-all duration-200 bg-gradient-to-br from-white to-green-50 hover:from-green-50 hover:to-green-100">
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Lightbulb className="w-4 h-4 text-green-600" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 mb-1">{course.skill_title}</h3>
-                      {course.category && (
-                        <Badge variant="outline" className="text-xs mb-2">{course.category}</Badge>
-                      )}
-                    </div>
-                  </div>
-                  {course.description && (
-                    <p className="text-sm text-gray-600 line-clamp-2">{course.description}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12 text-gray-500">
-              <BookOpen className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-              <h3 className="text-lg font-medium mb-2">No Course Recommendations Found</h3>
-              <p className="text-sm">We're continuously updating our database with more skill recommendations for {mbtiType} types.</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 };
