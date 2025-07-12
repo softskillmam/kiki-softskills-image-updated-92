@@ -7,7 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { Brain, Users, Lightbulb, Target, BookOpen, Star, TrendingUp, Heart, Zap, Shield } from 'lucide-react';
+import { Brain, Users, Lightbulb, Target, BookOpen, Star, TrendingUp, Heart, Zap, Shield, GraduationCap } from 'lucide-react';
 
 interface Question {
   id: number;
@@ -43,6 +43,17 @@ interface CourseRecommendation {
   skill_title: string;
   description: string;
   category: string;
+}
+
+interface Course {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  price: number;
+  original_price?: number;
+  duration: string;
+  image_url?: string;
 }
 
 // MBTI type definition to match database enum
@@ -105,11 +116,6 @@ const questions: Question[] = [
   { id: 47, question: "In your daily routine, you:", optionA: "Follow a set pattern", optionB: "Vary your activities", dimension: 'JP', aValue: 'J', bValue: 'P' },
   { id: 48, question: "You are more comfortable with:", optionA: "Having everything planned", optionB: "Leaving room for surprises", dimension: 'JP', aValue: 'J', bValue: 'P' }
 ];
-
-interface MBTIQuizProps {
-  onComplete: (result: MBTIResult) => void;
-  isRetake?: boolean;
-}
 
 const PERSONALITY_DESCRIPTIONS = {
   'INTJ': {
@@ -242,6 +248,31 @@ const PERSONALITY_DESCRIPTIONS = {
   }
 };
 
+// Map MBTI types to relevant course categories and keywords
+const MBTI_COURSE_MAPPING = {
+  'ESFJ': ['Management', 'HR', 'Healthcare', 'Education', 'Customer Service', 'Social Work'],
+  'ESFP': ['Marketing', 'Design', 'Arts', 'Fashion', 'Tourism', 'Entertainment'],
+  'ESTP': ['Sales', 'Business', 'Emergency Services', 'Real Estate', 'Sports', 'Entrepreneurship'],
+  'ESTJ': ['Management', 'Business', 'Operations', 'Finance', 'Leadership', 'Administration'],
+  'ISFJ': ['Healthcare', 'Education', 'Counseling', 'Administration', 'Social Work', 'Library Science'],
+  'ISFP': ['Arts', 'Design', 'Healthcare', 'Creative', 'Photography', 'Interior Design'],
+  'ISTP': ['Engineering', 'Technology', 'Programming', 'Automotive', 'Science', 'Aviation'],
+  'ISTJ': ['Accounting', 'Finance', 'Administration', 'Law', 'Healthcare', 'Project Management'],
+  'INFJ': ['Psychology', 'Counseling', 'Writing', 'Education', 'Environmental Science', 'Nonprofit'],
+  'INFP': ['Creative Writing', 'Psychology', 'Arts', 'Music', 'Translation', 'Marketing'],
+  'INTP': ['Data Science', 'Research', 'Philosophy', 'Technology', 'Economics', 'Programming'],
+  'INTJ': ['Technology', 'Finance', 'Architecture', 'Strategy', 'Engineering', 'Research'],
+  'ENFJ': ['Education', 'Training', 'Public Relations', 'Coaching', 'Healthcare', 'Leadership'],
+  'ENFP': ['Marketing', 'Social Media', 'Event Planning', 'Journalism', 'Creative', 'Communications'],
+  'ENTP': ['Business', 'Technology', 'Consulting', 'Law', 'Advertising', 'Innovation'],
+  'ENTJ': ['Leadership', 'Business', 'Finance', 'Strategy', 'Management', 'Entrepreneurship']
+};
+
+interface MBTIQuizProps {
+  onComplete: (result: MBTIResult) => void;
+  isRetake?: boolean;
+}
+
 const MBTIQuiz: React.FC<MBTIQuizProps> = ({ onComplete, isRetake = false }) => {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<number, 'A' | 'B'>>({});
@@ -249,6 +280,7 @@ const MBTIQuiz: React.FC<MBTIQuizProps> = ({ onComplete, isRetake = false }) => 
   const [mbtiResult, setMbtiResult] = useState<MBTIResult | null>(null);
   const [careers, setCareers] = useState<Career[]>([]);
   const [courses, setCourses] = useState<CourseRecommendation[]>([]);
+  const [matchingCourses, setMatchingCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingRecommendations, setLoadingRecommendations] = useState(false);
   const { user } = useAuth();
@@ -411,6 +443,44 @@ const MBTIQuiz: React.FC<MBTIQuizProps> = ({ onComplete, isRetake = false }) => 
       } else {
         console.log('Course recommendations fetched:', courseData);
         setCourses(courseData || []);
+      }
+
+      // Fetch matching courses from the courses table
+      const relevantCategories = MBTI_COURSE_MAPPING[mbtiType] || [];
+      console.log('Relevant categories for', mbtiType, ':', relevantCategories);
+      
+      if (relevantCategories.length > 0) {
+        const orFilters = relevantCategories.map(cat => {
+          const escapedCat = cat.replace(/"/g, '\\"');
+          return `category.ilike.%${escapedCat}%`;
+        }).join(',');
+
+        // Supabase or() expects a string with conditions separated by commas
+        // We'll query courses with status 'active' and category ilike any of the relevant categories
+        const { data: matchingCoursesData, error: coursesError } = await supabase
+          .from('courses')
+          .select('id, title, description, category, price, original_price, duration, image_url')
+          .eq('status', 'active')
+          .or(orFilters)
+          .limit(6);
+
+        if (coursesError) {
+          console.error('Error fetching matching courses:', coursesError);
+        } else {
+          console.log('Matching courses fetched:', matchingCoursesData);
+          setMatchingCourses(matchingCoursesData || []);
+        }
+      } else {
+        // Fallback: get some general courses if no specific mapping
+        const { data: fallbackCourses, error: fallbackError } = await supabase
+          .from('courses')
+          .select('id, title, description, category, price, original_price, duration, image_url')
+          .eq('status', 'active')
+          .limit(3);
+
+        if (!fallbackError) {
+          setMatchingCourses(fallbackCourses || []);
+        }
       }
     } catch (error) {
       console.error('Error fetching recommendations:', error);
@@ -639,7 +709,51 @@ const MBTIQuiz: React.FC<MBTIQuizProps> = ({ onComplete, isRetake = false }) => 
           </Card>
         )}
 
-        {/* Course Recommendations */}
+        {/* Matching Courses from Database */}
+        {!loadingRecommendations && matchingCourses.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <GraduationCap className="w-5 h-5 text-purple-600" />
+                Recommended Courses for {mbtiResult.type}
+                <Badge variant="secondary" className="ml-2">{matchingCourses.length} found</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {matchingCourses.map((course, index) => (
+                  <div key={index} className="border rounded-lg p-4 hover:shadow-lg transition-all duration-200 bg-gradient-to-br from-white to-purple-50 hover:from-purple-50 hover:to-purple-100">
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <GraduationCap className="w-4 h-4 text-purple-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900 mb-1">{course.title}</h3>
+                        {course.category && (
+                          <Badge variant="outline" className="text-xs mb-2">{course.category}</Badge>
+                        )}
+                      </div>
+                    </div>
+                    {course.description && (
+                      <p className="text-sm text-gray-600 line-clamp-2 mb-3">{course.description}</p>
+                    )}
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-500">{course.duration}</span>
+                      <div className="flex items-center gap-2">
+                        {course.original_price && course.original_price > course.price && (
+                          <span className="text-gray-400 line-through">₹{course.original_price}</span>
+                        )}
+                        <span className="font-semibold text-purple-600">₹{course.price}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Course Recommendations from database */}
         {!loadingRecommendations && (
           <Card>
             <CardHeader>
