@@ -39,7 +39,7 @@ const HeroSection = () => {
             </h1>
             
             <p className="text-xl text-gray-600 mb-8 max-w-2xl">
-              <span className="font-semibold text-kiki-purple-700">Know thyself, grow thyself</span>
+              <span className="font-semibold text-kiki-purple-700">Know thyself, Grow thyself</span>
               <br />
               Discover your potential with our comprehensive programs for kids, teens, parents, and professionals.
             </p>
